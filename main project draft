@@ -1,0 +1,161 @@
+Express and evaluate the following DDL and DML types of SQL commands against your database
+in which every relation is populated with 'sufficient' representative tuples: 
+
+//------------------------------------------//
+1. Create/Delete/Edit/Display a Location
+
+-- Create
+INSERT INTO Locations (Type, Name, Address, City, Province, PostalCode, PhoneNumber, WebAddress, MaxCapacity)
+VALUES ('Head', 'Main Sports Complex', '123 Sports Ave', 'Toronto', 'Ontario', 'M5V 3L9', '416-555-1000', 'www.maincomplex.com', 500);
+
+-- Display
+SELECT * FROM Locations WHERE Name = 'Main Sports Complex';
+
+-- Edit
+UPDATE Locations 
+SET MaxCapacity = 550, WebAddress = 'www.maincomplex.ca'
+WHERE Name = 'Main Sports Complex';
+
+-- Delete
+DELETE FROM Locations WHERE Name = 'Main Sports Complex';
+
+//------------------------------------------//
+2. Create/Delete/Edit/Display a Personnel
+-- Create
+INSERT INTO Personnel (FirstName, LastName, DateOfBirth, SocialSecurityNumber, MedicareCardNumber, PhoneNumber, Address, City, Province, PostalCode, Email, Role, Mandate)
+VALUES ('Sarah', 'Johnson', '1985-06-15', '123-456-789', 'MED123456', '416-555-2000', '456 Coach Lane', 'Toronto', 'Ontario', 'M5V 3L1', 's.johnson@sports.com', 'Coach', 'Salaried');
+
+-- Display
+SELECT * FROM Personnel WHERE LastName = 'Johnson';
+
+-- Edit
+UPDATE Personnel
+SET Role = 'Head Coach', Email = 'sarah.johnson@sports.ca'
+WHERE LastName = 'Johnson';
+
+-- Delete
+DELETE FROM Personnel WHERE LastName = 'Johnson';
+
+
+//------------------------------------------//
+3. Create/Delete/Edit/Display a FamilyMember
+-- Create Primary
+INSERT INTO FamilyMembers (FirstName, LastName, DateOfBirth, SocialSecurityNumber, MedicareCardNumber, PhoneNumber, Address, City, Province, PostalCode, Email, LocationID)
+VALUES ('Michael', 'Smith', '1975-03-22', '987-654-321', 'MED654321', '416-555-3000', '789 Family Rd', 'Toronto', 'Ontario', 'M5V 3L2', 'm.smith@email.com', 1);
+
+-- Create Secondary
+INSERT INTO FamilyMembers (FirstName, LastName, DateOfBirth, SocialSecurityNumber, MedicareCardNumber, PhoneNumber, Address, City, Province, PostalCode, Email, LocationID)
+VALUES ('Emily', 'Smith', '1978-11-15', '987-654-322', 'MED654322', '416-555-3001', '789 Family Rd', 'Toronto', 'Ontario', 'M5V 3L2', 'e.smith@email.com', 1);
+
+-- Display
+SELECT * FROM FamilyMembers WHERE LastName = 'Smith';
+
+-- Edit
+UPDATE FamilyMembers
+SET PhoneNumber = '416-555-3111'
+WHERE LastName = 'Smith' AND FirstName = 'Michael';
+
+-- Delete
+DELETE FROM FamilyMembers WHERE LastName = 'Smith';
+
+
+//------------------------------------------//
+4. Create/Delete/Edit/Display a ClubMember
+-- Create
+INSERT INTO ClubMembers (FirstName, LastName, DateOfBirth, Height, Weight, SocialSecurityNumber, MedicareCardNumber, PhoneNumber, Address, City, Province, PostalCode, FamilyMemberID)
+VALUES ('Jacob', 'Smith', '2010-05-10', 150.5, 45.2, '111-222-333', 'MED111222', '416-555-4000', '789 Family Rd', 'Toronto', 'Ontario', 'M5V 3L2', 1);
+
+-- Display
+SELECT * FROM ClubMembers WHERE LastName = 'Smith';
+
+-- Edit
+UPDATE ClubMembers
+SET Height = 155.0, Weight = 48.0
+WHERE LastName = 'Smith' AND FirstName = 'Jacob';
+
+-- Delete
+DELETE FROM ClubMembers WHERE LastName = 'Smith';
+
+
+//------------------------------------------//
+5. Create/Delete/Edit/Display a TeamFormation
+-- Create
+INSERT INTO TeamFormations (LocationID, HeadCoachID, StartTime, EndTime, SessionType, TeamName, Score)
+VALUES (1, 1, '2025-03-25 10:00:00', '2025-03-25 12:00:00', 'Training', 'Junior A Team', NULL);
+
+-- Display
+SELECT * FROM TeamFormations WHERE TeamName = 'Junior A Team';
+
+-- Edit
+UPDATE TeamFormations
+SET EndTime = '2025-03-25 12:30:00', SessionType = 'Game'
+WHERE TeamName = 'Junior A Team';
+
+-- Delete
+DELETE FROM TeamFormations WHERE TeamName = 'Junior A Team';
+
+
+
+//------------------------------------------//
+6. Assign/Delete/Edit a Club Member to Team Formation
+-- Assign
+INSERT INTO ClubMemberFormations (ClubMemberID, FormationID, Role)
+VALUES (1, 1, 'Forward');
+
+-- Attempt conflicting assignment (will trigger error)
+-- First create another formation on same day
+INSERT INTO TeamFormations (LocationID, HeadCoachID, StartTime, EndTime, SessionType, TeamName, Score)
+VALUES (1, 1, '2025-03-25 11:30:00', '2025-03-25 13:30:00', 'Training', 'Junior B Team', NULL);
+
+-- This will fail due to our trigger
+INSERT INTO ClubMemberFormations (ClubMemberID, FormationID, Role)
+VALUES (1, 2, 'Defender');
+
+-- Edit role
+UPDATE ClubMemberFormations
+SET Role = 'Midfielder'
+WHERE ClubMemberID = 1 AND FormationID = 1;
+
+-- Delete assignment
+DELETE FROM ClubMemberFormations 
+WHERE ClubMemberID = 1 AND FormationID = 1;
+
+
+
+//------------------------------------------//
+
+
+
+
+
+7. Get complete details for every location in the system. Details include address, city,
+province, postal-code, phone number, web address, type (Head, Branch), capacity,
+general manager name, and the number of club members associated with that location.
+The results should be displayed sorted in ascending order by province, then by city.
+
+SELECT 
+    L.LocationID,
+    L.Name AS LocationName,
+    L.Address,
+    L.City,
+    L.Province,
+    L.PostalCode,
+    L.PhoneNumber,
+    L.WebAddress,
+    L.Type AS LocationType,
+    L.MaxCapacity AS Capacity,
+    CONCAT(P.FirstName, ' ', P.LastName) AS GeneralManagerName,
+    COUNT(DISTINCT CM.ClubMemberID) AS NumberOfClubMembers
+FROM 
+    Locations L
+LEFT JOIN 
+    Personnel P ON L.LocationID = P.LocationID AND P.Role = 'General Manager'
+LEFT JOIN 
+    ClubMembers CM ON L.LocationID = CM.LocationID
+GROUP BY 
+    L.LocationID, L.Name, L.Address, L.City, L.Province, L.PostalCode, 
+    L.PhoneNumber, L.WebAddress, L.Type, L.MaxCapacity, P.FirstName, P.LastName
+ORDER BY 
+    L.Province ASC, 
+    L.City ASC;
+
