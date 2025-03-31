@@ -159,3 +159,114 @@ ORDER BY
     L.Province ASC, 
     L.City ASC;
 
+
+
+//-------------------------------------------//
+8. For a given family member, get details of all the locations that she/he was/is associated
+with, the secondary family member and all the club members associated with the
+primary family member. Information includes first name, last name and phone number
+of the secondary family member, and for every associated club member, the location
+name, the club membership number, first-name, last-name, date of birth, Social
+Security Number, Medicare card number, telephone number, address, city, province,
+postal-code, and relationship with the secondary family member. 
+
+
+SET @primary_family_member_id = 1;
+
+SELECT 
+    -- Secondary Family Member Info
+    fm2.FirstName AS SecondaryFirstName,
+    fm2.LastName AS SecondaryLastName,
+    fm2.PhoneNumber AS SecondaryPhoneNumber,
+    
+    -- Club Member Info
+    cm.ClubMemberID AS MembershipNumber,
+    cm.FirstName AS ClubMemberFirstName,
+    cm.LastName AS ClubMemberLastName,
+    cm.DateOfBirth,
+    cm.SocialSecurityNumber,
+    cm.MedicareCardNumber,
+    cm.PhoneNumber AS ClubMemberPhone,
+    cm.Address,
+    cm.City,
+    cm.Province,
+    cm.PostalCode,
+    
+    -- Location Info
+    loc.Name AS LocationName,
+    
+    -- Relationship Info
+    fmr.RelationshipType
+FROM 
+    FamilyMembers fm1
+-- Join to find secondary family members (those sharing the same location)
+JOIN 
+    FamilyMembers fm2 ON fm1.LocationID = fm2.LocationID 
+    AND fm2.FamilyMemberID != @primary_family_member_id
+-- Join to find club members associated with primary family member
+JOIN 
+    ClubMembers cm ON cm.FamilyMemberID = fm1.FamilyMemberID
+-- Join to get location info
+JOIN 
+    Locations loc ON fm1.LocationID = loc.LocationID
+-- Join to get relationship between secondary family member and club member
+LEFT JOIN 
+    FamilyMemberRelationships fmr ON fmr.FamilyMemberID = fm2.FamilyMemberID 
+    AND fmr.ClubMemberID = cm.ClubMemberID
+WHERE 
+    fm1.FamilyMemberID = @primary_family_member_id
+ORDER BY 
+    fm2.LastName, fm2.FirstName, cm.LastName, cm.FirstName;
+
+
+//--------------------//
+
+9. For a given location and week, get details of all the teams’ formations recorded in the
+system. Details include, head coach first name and last name, start time of the training
+or game session, address of the session, nature of the session (training or game), the
+teams name, the score (if the session is in the future, then score will be null), and the
+first name, last name and role (goalkeeper, defender, etc.) of every player in the team.
+Results should be displayed sorted in ascending order by the start day then by the start
+time of the session
+
+
+-- Parameters (replace with actual values)
+SET @location_id = 1;                      -- The location ID you're interested in
+SET @week_start_date = '2025-03-24';       -- Start date of the week (Monday)
+SET @week_end_date = '2025-03-30';         -- End date of the week (Sunday)
+
+SELECT 
+    -- Session details
+    tf.FormationID,
+    CONCAT(p.FirstName, ' ', p.LastName) AS HeadCoach,
+    tf.StartTime,
+    l.Address AS SessionAddress,
+    tf.SessionType,
+    tf.TeamName,
+    CASE 
+        WHEN tf.StartTime > NOW() THEN NULL
+        ELSE tf.Score
+    END AS Score,
+    
+    -- Player details
+    cm.ClubMemberID,
+    cm.FirstName AS PlayerFirstName,
+    cm.LastName AS PlayerLastName,
+    cmf.Role AS PlayerRole
+FROM 
+    TeamFormations tf
+JOIN 
+    Locations l ON tf.LocationID = l.LocationID
+JOIN 
+    Personnel p ON tf.HeadCoachID = p.PersonnelID
+JOIN 
+    ClubMemberFormations cmf ON tf.FormationID = cmf.FormationID
+JOIN 
+    ClubMembers cm ON cmf.ClubMemberID = cm.ClubMemberID
+WHERE 
+    tf.LocationID = @location_id
+    AND DATE(tf.StartTime) BETWEEN @week_start_date AND @week_end_date
+ORDER BY 
+    DATE(tf.StartTime) ASC,  -- Sort by day first
+    tf.StartTime ASC,        -- Then by time within each day
+    cm.LastName, cm.FirstName;  -- Then alphabetically by player name
