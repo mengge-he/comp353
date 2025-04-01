@@ -160,6 +160,8 @@ ORDER BY
     L.City ASC;
 
 
+    
+
 
 //-------------------------------------------//
 8. For a given family member, get details of all the locations that she/he was/is associated
