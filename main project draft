@@ -135,17 +135,17 @@ The results should be displayed sorted in ascending order by province, then by c
 
 SELECT 
     L.LocationID,
-    L.Name AS LocationName,
+    L.Name,
     L.Address,
     L.City,
     L.Province,
     L.PostalCode,
     L.PhoneNumber,
     L.WebAddress,
-    L.Type AS LocationType,
-    L.MaxCapacity AS Capacity,
-    CONCAT(P.FirstName, ' ', P.LastName) AS GeneralManagerName,
-    COUNT(DISTINCT CM.ClubMemberID) AS NumberOfClubMembers
+    L.Type,
+    L.MaxCapacity,
+    CONCAT(P.FirstName, ' ', P.LastName),
+    COUNT(DISTINCT CM.ClubMemberID)
 FROM 
     Locations L
 LEFT JOIN 
@@ -173,22 +173,21 @@ Security Number, Medicare card number, telephone number, address, city, province
 postal-code, and relationship with the secondary family member. 
 
 
-SET @primary_family_member_id = 1;
 
 SELECT 
     -- Secondary Family Member Info
-    fm2.FirstName AS SecondaryFirstName,
-    fm2.LastName AS SecondaryLastName,
-    fm2.PhoneNumber AS SecondaryPhoneNumber,
+    fm2.FirstName,
+    fm2.LastName,
+    fm2.PhoneNumber,
     
     -- Club Member Info
-    cm.ClubMemberID AS MembershipNumber,
-    cm.FirstName AS ClubMemberFirstName,
-    cm.LastName AS ClubMemberLastName,
+    cm.ClubMemberID,
+    cm.FirstName,
+    cm.LastName,
     cm.DateOfBirth,
     cm.SocialSecurityNumber,
     cm.MedicareCardNumber,
-    cm.PhoneNumber AS ClubMemberPhone,
+    cm.PhoneNumber,
     cm.Address,
     cm.City,
     cm.Province,
@@ -232,10 +231,6 @@ Results should be displayed sorted in ascending order by the start day then by t
 time of the session
 
 
--- Parameters (replace with actual values)
-SET @location_id = 1;                      -- The location ID you're interested in
-SET @week_start_date = '2025-03-24';       -- Start date of the week (Monday)
-SET @week_end_date = '2025-03-30';         -- End date of the week (Sunday)
 
 SELECT 
     -- Session details
@@ -272,3 +267,192 @@ ORDER BY
     DATE(tf.StartTime) ASC,  -- Sort by day first
     tf.StartTime ASC,        -- Then by time within each day
     cm.LastName, cm.FirstName;  -- Then alphabetically by player name
+
+
+
+//-------------------------------//
+10. Get details of club members who are currently active and have been associated with at
+least three different locations and are members for at most three years. Details include
+Club membership number, first name and last name. Results should be displayed sorted
+in ascending order by club membership number.
+
+
+SELECT 
+    cm.ClubMemberID,
+    cm.FirstName,
+    cm.LastName 
+FROM 
+    ClubMembers cm
+WHERE 
+    -- Currently active (assuming there's an IsActive flag or similar)
+    cm.IsActive = 1
+    
+    -- Member for at most 3 years
+    AND DATEDIFF(CURRENT_DATE, cm.JoinDate) <= 365*3
+    
+    -- Associated with at least 3 different locations
+    AND (
+        SELECT COUNT(DISTINCT LocationID) 
+        FROM ClubMemberLocations 
+        WHERE ClubMemberID = cm.ClubMemberID
+    ) >= 3
+ORDER BY 
+    cm.ClubMemberID ASC;
+
+
+
+//----------------------------------------------------//
+11. For a given period of time, give a report on the teams’ formations for all the locations.
+For each location, the report should include the location name, the total number of
+training sessions, the total number of players in the training sessions, the total number
+of game sessions, the total number of players in the game sessions. Results should only
+include locations that have at least two game sessions. Results should be displayed
+sorted in descending order by the total number of game sessions. For example, the
+period of time could be from Jan. 1st, 2025 to Mar. 31st, 2025.
+
+SELECT 
+    l.LocationID,
+    l.Name AS LocationName,
+    SUM(CASE WHEN tf.SessionType = 'Training' THEN 1 ELSE 0 END) AS TotalTrainingSessions,
+    SUM(CASE WHEN tf.SessionType = 'Training' THEN player_counts.PlayerCount ELSE 0 END) AS TotalPlayersInTraining,
+    SUM(CASE WHEN tf.SessionType = 'Game' THEN 1 ELSE 0 END) AS TotalGameSessions,
+    SUM(CASE WHEN tf.SessionType = 'Game' THEN player_counts.PlayerCount ELSE 0 END) AS TotalPlayersInGames
+FROM 
+    Locations l
+JOIN 
+    TeamFormations tf ON l.LocationID = tf.LocationID
+LEFT JOIN (
+    SELECT 
+        FormationID, 
+        COUNT(*) AS PlayerCount 
+    FROM 
+        ClubMemberFormations 
+    GROUP BY 
+        FormationID
+) player_counts ON tf.FormationID = player_counts.FormationID
+WHERE 
+    tf.StartTime BETWEEN @start_date AND @end_date
+GROUP BY 
+    l.LocationID, l.Name
+HAVING 
+    SUM(CASE WHEN tf.SessionType = 'Game' THEN 1 ELSE 0 END) >= 2
+ORDER BY 
+    TotalGameSessions DESC;
+
+
+//------------------------------------------------//
+12. Get a report on all active club members who have never been assigned to any formation
+team session. The list should include the club member’s membership number, first
+name, last name, age, date of joining the club, phone number, email and current location
+name. The results should be displayed sorted in ascending order by location name then
+by club membership number. 
+
+SELECT 
+    cm.ClubMemberID AS "Membership Number",
+    cm.FirstName AS "First Name",
+    cm.LastName AS "Last Name",
+    TIMESTAMPDIFF(YEAR, cm.DateOfBirth, CURDATE()) AS "Age",
+    cm.JoinDate AS "Date of Joining",
+    cm.PhoneNumber AS "Phone Number",
+    cm.Email AS "Email",
+    loc.Name AS "Current Location Name"
+FROM 
+    ClubMembers cm
+JOIN 
+    Locations loc ON cm.LocationID = loc.LocationID
+WHERE 
+    cm.IsActive = 1  -- Assuming there's an IsActive flag
+    AND NOT EXISTS (
+        SELECT 1 
+        FROM ClubMemberFormations cmf 
+        WHERE cmf.ClubMemberID = cm.ClubMemberID
+    )
+ORDER BY 
+    loc.Name ASC,  -- Sort by location name first
+    cm.ClubMemberID ASC;  -- Then by membership number
+
+//---------------------------------//
+13. Get a report on all active club members who have only been assigned as outside hitter
+in all the formation team sessions they have been assigned to. They must be assigned
+to at least one formation session as an outside hitter. They should have never been
+assigned to any formation session with a role different than outside hitter. The list
+should include the club member’s membership number, first name, last name, age,
+phone number, email and current location name. The results should be displayed sorted
+in ascending order by location name then by club membership number. 
+
+SELECT 
+    cm.ClubMemberID AS "Membership Number",
+    cm.FirstName AS "First Name",
+    cm.LastName AS "Last Name",
+    TIMESTAMPDIFF(YEAR, cm.DateOfBirth, CURDATE()) AS "Age",
+    cm.PhoneNumber AS "Phone Number",
+    cm.Email AS "Email",
+    loc.Name AS "Current Location Name"
+FROM 
+    ClubMembers cm
+JOIN 
+    Locations loc ON cm.LocationID = loc.LocationID
+WHERE 
+    cm.IsActive = 1
+    -- Must have at least one assignment as outside hitter
+    AND EXISTS (
+        SELECT 1 
+        FROM ClubMemberFormations cmf 
+        WHERE cmf.ClubMemberID = cm.ClubMemberID 
+        AND cmf.Role = 'Outside Hitter'
+    )
+    -- Must have no assignments in any other role
+    AND NOT EXISTS (
+        SELECT 1 
+        FROM ClubMemberFormations cmf 
+        WHERE cmf.ClubMemberID = cm.ClubMemberID 
+        AND cmf.Role != 'Outside Hitter'
+    )
+ORDER BY 
+    loc.Name ASC,
+    cm.ClubMemberID ASC;
+
+//---------------------------------//
+14. Get a report on all active club members who have been assigned at least once to every
+role throughout all the formation team game sessions. The club member must be
+assigned to at least one formation game session as an outside hitter, opposite, setter,
+middle blocker, libero, defensive specialist, and serving specialist. The list should
+include the club member’s membership number, first name, last name, age, phone
+number, email and current location name. The results should be displayed sorted in
+ascending order by location name then by club membership number. 
+
+SELECT 
+    cm.ClubMemberID AS "Membership Number",
+    cm.FirstName AS "First Name",
+    cm.LastName AS "Last Name",
+    TIMESTAMPDIFF(YEAR, cm.DateOfBirth, CURDATE()) AS "Age",
+    cm.PhoneNumber AS "Phone Number",
+    cm.Email AS "Email",
+    loc.Name AS "Current Location Name"
+FROM 
+    ClubMembers cm
+JOIN 
+    Locations loc ON cm.LocationID = loc.LocationID
+JOIN 
+    ClubMemberFormations cmf ON cm.ClubMemberID = cmf.ClubMemberID
+JOIN 
+    TeamFormations tf ON cmf.FormationID = tf.FormationID
+WHERE 
+    cm.IsActive = 1
+    AND tf.SessionType = 'Game'
+    AND cmf.Role IN ('Outside Hitter', 'Opposite', 'Setter', 'Middle Blocker', 
+                   'Libero', 'Defensive Specialist', 'Serving Specialist')
+GROUP BY 
+    cm.ClubMemberID, cm.FirstName, cm.LastName, cm.DateOfBirth, 
+    cm.PhoneNumber, cm.Email, loc.Name
+HAVING 
+    COUNT(DISTINCT CASE WHEN cmf.Role = 'Outside Hitter' THEN 1 END) >= 1
+    AND COUNT(DISTINCT CASE WHEN cmf.Role = 'Opposite' THEN 1 END) >= 1
+    AND COUNT(DISTINCT CASE WHEN cmf.Role = 'Setter' THEN 1 END) >= 1
+    AND COUNT(DISTINCT CASE WHEN cmf.Role = 'Middle Blocker' THEN 1 END) >= 1
+    AND COUNT(DISTINCT CASE WHEN cmf.Role = 'Libero' THEN 1 END) >= 1
+    AND COUNT(DISTINCT CASE WHEN cmf.Role = 'Defensive Specialist' THEN 1 END) >= 1
+    AND COUNT(DISTINCT CASE WHEN cmf.Role = 'Serving Specialist' THEN 1 END) >= 1
+ORDER BY 
+    loc.Name ASC,
+    cm.ClubMemberID ASC;
