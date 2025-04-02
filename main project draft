@@ -134,30 +134,30 @@ general manager name, and the number of club members associated with that locati
 The results should be displayed sorted in ascending order by province, then by city.
 
 SELECT 
-    L.LocationID,
-    L.Name,
-    L.Address,
-    L.City,
-    L.Province,
-    L.PostalCode,
-    L.PhoneNumber,
-    L.WebAddress,
-    L.Type,
-    L.MaxCapacity,
+    Locations.LocationID,
+    Locations.Name,
+    Locations.Address,
+    Locations.City,
+    Locations.Province,
+    Locations.PostalCode,
+    Locations.PhoneNumber,
+    Locations.WebAddress,
+    Locations.Type,
+    Locations.MaxCapacity,
     CONCAT(P.FirstName, ' ', P.LastName),
     COUNT(DISTINCT CM.ClubMemberID)
 FROM 
-    Locations L
+    Locations
 LEFT JOIN 
-    Personnel P ON L.LocationID = P.LocationID AND P.Role = 'General Manager'
+    Personnel  ON Locations.LocationID = Personnel.LocationID AND Personnel.Role = 'General Manager'
 LEFT JOIN 
-    ClubMembers CM ON L.LocationID = CM.LocationID
+    ClubMembers  ON Locations.LocationID = ClubMembers.LocationID
 GROUP BY 
-    L.LocationID, L.Name, L.Address, L.City, L.Province, L.PostalCode, 
-    L.PhoneNumber, L.WebAddress, L.Type, L.MaxCapacity, P.FirstName, P.LastName
+    Locations.LocationID, Locations.Name, Locations.Address, Locations.City, Locations.Province, Locations.PostalCode, 
+    Locations.PhoneNumber, Locations.WebAddress, Locations.Type, L.MaxCapacity, Personnel.FirstName, Personnel.LastName
 ORDER BY 
-    L.Province ASC, 
-    L.City ASC;
+    Locations.Province ASC, 
+    Locations.City ASC;
 
 
     
@@ -278,23 +278,23 @@ in ascending order by club membership number.
 
 
 SELECT 
-    cm.ClubMemberID,
-    cm.FirstName,
-    cm.LastName 
+    ClubMembers.ClubMemberID,
+    ClubMembers.FirstName,
+    ClubMembers.LastName 
 FROM 
-    ClubMembers cm
+    ClubMembers
 WHERE 
     -- Currently active (assuming there's an IsActive flag or similar)
-    cm.IsActive = 1
+    ClubMembers.IsActive = 1
     
     -- Member for at most 3 years
-    AND DATEDIFF(CURRENT_DATE, cm.JoinDate) <= 365*3
+    AND DATEDIFF(CURRENT_DATE, ClubMembers.JoinDate) <= 365*3
     
     -- Associated with at least 3 different locations
     AND (
         SELECT COUNT(DISTINCT LocationID) 
         FROM ClubMemberLocations 
-        WHERE ClubMemberID = cm.ClubMemberID
+        WHERE ClubMemberLocations.ClubMemberID = ClubMembers.ClubMemberID
     ) >= 3
 ORDER BY 
     cm.ClubMemberID ASC;
