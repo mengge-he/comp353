@@ -40,7 +40,7 @@ DELETE FROM Personnel WHERE LastName = 'Johnson';
 //------------------------------------------//
 3. Create/Delete/Edit/Display a FamilyMember
 -- Create Primary
-INSERT INTO FamilyMembers (FirstName, LastName, DateOfBirth, SocialSecurityNumber, MedicareCardNumber, PhoneNumber, Address, City, Province, PostalCode, Email, LocationID)
+INSERT INTO FamilyMembers (FirstName, LtName, DateOfBirth, SocialSecurityNumber, MedicareCardNumber, PhoneNumber, Address, City, Province, PostalCode, Email, LocationID)
 VALUES ('Michael', 'Smith', '1975-03-22', '987-654-321', 'MED654321', '416-555-3000', '789 Family Rd', 'Toronto', 'Ontario', 'M5V 3L2', 'm.smith@email.com', 1);
 
 -- Create Secondary
@@ -249,9 +249,9 @@ time of the session
 SELECT 
     -- Session details
     tf.FormationID,
-    CONCAT(p.FirstName, ' ', p.LastName) AS HeadCoach,
+    CONCAT(p.FirstName, ' ', p.LastName) ,
     tf.StartTime,
-    l.Address AS SessionAddress,
+    l.Address ,
     tf.SessionType,
     tf.TeamName,
     CASE 
@@ -261,9 +261,9 @@ SELECT
     
     -- Player details
     cm.ClubMemberID,
-    cm.FirstName AS PlayerFirstName,
-    cm.LastName AS PlayerLastName,
-    cmf.Role AS PlayerRole
+    cm.FirstName ,
+    cm.LastName ,
+    cmf.Role 
 FROM 
     TeamFormations tf
 JOIN 
@@ -330,10 +330,10 @@ SET @end_date = '2025-03-31';
 SELECT 
     l.LocationID,
     l.Name AS LocationName,
-    SUM(CASE WHEN tf.SessionType = 'Training' THEN 1 ELSE 0 END) AS TotalTrainingSessions,
-    SUM(CASE WHEN tf.SessionType = 'Training' THEN player_counts.PlayerCount ELSE 0 END) AS TotalPlayersInTraining,
-    SUM(CASE WHEN tf.SessionType = 'Game' THEN 1 ELSE 0 END) AS TotalGameSessions,
-    SUM(CASE WHEN tf.SessionType = 'Game' THEN player_counts.PlayerCount ELSE 0 END) AS TotalPlayersInGames
+    SUM(CASE WHEN tf.SessionType = 'Training' THEN 1 ELSE 0 END) ,
+    SUM(CASE WHEN tf.SessionType = 'Training' THEN player_counts.PlayerCount ELSE 0 END) ,
+    SUM(CASE WHEN tf.SessionType = 'Game' THEN 1 ELSE 0 END) ,
+    SUM(CASE WHEN tf.SessionType = 'Game' THEN player_counts.PlayerCount ELSE 0 END) 
 FROM 
     Locations l
 JOIN 
@@ -341,7 +341,7 @@ JOIN
 LEFT JOIN (
     SELECT 
         FormationID, 
-        COUNT(*) AS PlayerCount 
+        COUNT(*)  
     FROM 
         ClubMemberFormations 
     GROUP BY 
@@ -365,14 +365,14 @@ name. The results should be displayed sorted in ascending order by location name
 by club membership number. 
 
 SELECT 
-    cm.ClubMemberID AS "Membership Number",
-    cm.FirstName AS "First Name",
-    cm.LastName AS "Last Name",
-    TIMESTAMPDIFF(YEAR, cm.DateOfBirth, CURDATE()) AS "Age",
-    cm.JoinDate AS "Date of Joining",
-    cm.PhoneNumber AS "Phone Number",
-    cm.Email AS "Email",
-    loc.Name AS "Current Location Name"
+    cm.ClubMemberID ,
+    cm.FirstName ,
+    cm.LastName ,
+    TIMESTAMPDIFF(YEAR, cm.DateOfBirth, CURDATE()) ,
+    cm.JoinDate ,
+    cm.PhoneNumber ,
+    cm.Email ,
+    loc.Name 
 FROM 
     ClubMembers cm
 JOIN 
@@ -398,13 +398,13 @@ phone number, email and current location name. The results should be displayed s
 in ascending order by location name then by club membership number. 
 
 SELECT 
-    cm.ClubMemberID AS "Membership Number",
-    cm.FirstName AS "First Name",
-    cm.LastName AS "Last Name",
-    TIMESTAMPDIFF(YEAR, cm.DateOfBirth, CURDATE()) AS "Age",
-    cm.PhoneNumber AS "Phone Number",
-    cm.Email AS "Email",
-    loc.Name AS "Current Location Name"
+    cm.ClubMemberID ,
+    cm.FirstName ,
+    cm.LastName ,
+    TIMESTAMPDIFF(YEAR, cm.DateOfBirth, CURDATE()) ,
+    cm.PhoneNumber ,
+    cm.Email ,
+    loc.Name 
 FROM 
     ClubMembers cm
 JOIN 
@@ -439,13 +439,13 @@ number, email and current location name. The results should be displayed sorted 
 ascending order by location name then by club membership number. 
 
 SELECT 
-    cm.ClubMemberID AS "Membership Number",
-    cm.FirstName AS "First Name",
-    cm.LastName AS "Last Name",
-    TIMESTAMPDIFF(YEAR, cm.DateOfBirth, CURDATE()) AS "Age",
-    cm.PhoneNumber AS "Phone Number",
-    cm.Email AS "Email",
-    loc.Name AS "Current Location Name"
+    cm.ClubMemberID,
+    cm.FirstName ,
+    cm.LastName ,
+    TIMESTAMPDIFF(YEAR, cm.DateOfBirth, CURDATE()) ,
+    cm.PhoneNumber ,
+    cm.Email ,
+    loc.Name 
 FROM 
     ClubMembers cm
 JOIN 
@@ -518,13 +518,13 @@ age, phone number, email and current location name. The results should be displa
 sorted in ascending order by location name then by club membership number. 
 
 SELECT 
-    cm.ClubMemberID AS "Membership Number",
-    cm.FirstName AS "First Name",
-    cm.LastName AS "Last Name",
-    TIMESTAMPDIFF(YEAR, cm.DateOfBirth, CURDATE()) AS "Age",
-    cm.PhoneNumber AS "Phone Number",
-    cm.Email AS "Email",
-    loc.Name AS "Current Location Name"
+    cm.ClubMemberID ,
+    cm.FirstName ,
+    cm.LastName ,
+    TIMESTAMPDIFF(YEAR, cm.DateOfBirth, CURDATE()) ,
+    cm.PhoneNumber ,
+    cm.Email ,
+    loc.Name 
 FROM 
     ClubMembers cm
 JOIN 
@@ -566,8 +566,8 @@ as a treasurer.
 SELECT 
     p.FirstName,
     p.LastName,
-    MIN(pl.StartDate) AS "Start Date as Treasurer",
-    MAX(IFNULL(pl.EndDate, NULL)) AS "Last Date as Treasurer",
+    MIN(pl.StartDate) AS "Start Date ,
+    MAX(IFNULL(pl.EndDate, NULL)) ,
     CASE 
         WHEN MAX(IFNULL(pl.EndDate, '9999-12-31')) = '9999-12-31' THEN 'Current Treasurer'
         ELSE 'Former Treasurer'
