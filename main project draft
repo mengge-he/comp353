@@ -324,6 +324,9 @@ include locations that have at least two game sessions. Results should be displa
 sorted in descending order by the total number of game sessions. For example, the
 period of time could be from Jan. 1st, 2025 to Mar. 31st, 2025.
 
+-- Set the date range parameters (example: Jan 1, 2025 to Mar 31, 2025)
+SET @start_date = '2025-01-01';
+SET @end_date = '2025-03-31';
 SELECT 
     l.LocationID,
     l.Name AS LocationName,
@@ -470,3 +473,128 @@ HAVING
 ORDER BY 
     loc.Name ASC,
     cm.ClubMemberID ASC;
+
+
+//---------------------------------------------//
+15. For the given location, get the list of all family members who have currently active
+club members associated with them and are also captains for the same location.
+Information includes first name, last name, and phone number of the family member.
+A family member is considered to be a captain if she/he is assigned as a captain to at
+least one team formation session in the same location. 
+
+-- Set the location parameter (replace 1 with your desired location ID)
+SET @location_id = 1;
+
+SELECT DISTINCT
+    fm.FirstName,
+    fm.LastName,
+    fm.PhoneNumber
+FROM
+    FamilyMembers fm
+JOIN
+    ClubMembers cm ON fm.FamilyMemberID = cm.FamilyMemberID
+JOIN
+    ClubMemberFormations cmf ON cm.ClubMemberID = cmf.ClubMemberID
+JOIN
+    TeamFormations tf ON cmf.FormationID = tf.FormationID
+JOIN
+    Personnel p ON tf.HeadCoachID = p.PersonnelID
+WHERE
+    cm.IsActive = 1  -- Only active club members
+    AND tf.LocationID = @location_id  -- For the specified location
+    AND p.Role = 'Captain'  -- Family member is a captain
+    AND tf.LocationID = fm.LocationID  -- Captain at same location
+ORDER BY
+    fm.LastName ASC,
+    fm.FirstName ASC;
+
+//----------------------------------------------------//
+16. Get a report of all active club members who have never lost a game in which they
+played. A club member is considered to win a game if she/he has been assigned to a
+game session and is assigned to the team that has a score higher than the score of the
+other team. The club member must be assigned to at least one formation game session.
+The list should include the club member’s membership number, first name, last name,
+age, phone number, email and current location name. The results should be displayed
+sorted in ascending order by location name then by club membership number. 
+
+SELECT 
+    cm.ClubMemberID AS "Membership Number",
+    cm.FirstName AS "First Name",
+    cm.LastName AS "Last Name",
+    TIMESTAMPDIFF(YEAR, cm.DateOfBirth, CURDATE()) AS "Age",
+    cm.PhoneNumber AS "Phone Number",
+    cm.Email AS "Email",
+    loc.Name AS "Current Location Name"
+FROM 
+    ClubMembers cm
+JOIN 
+    Locations loc ON cm.LocationID = loc.LocationID
+WHERE 
+    cm.IsActive = 1
+    AND EXISTS (
+        SELECT 1 
+        FROM ClubMemberFormations cmf
+        JOIN TeamFormations tf ON cmf.FormationID = tf.FormationID
+        WHERE cmf.ClubMemberID = cm.ClubMemberID
+        AND tf.SessionType = 'Game'
+    )
+    AND cm.ClubMemberID NOT IN (
+        SELECT DISTINCT cmf.ClubMemberID
+        FROM ClubMemberFormations cmf
+        JOIN TeamFormations tf ON cmf.FormationID = tf.FormationID
+        WHERE tf.SessionType = 'Game'
+        AND (
+            CAST(SUBSTRING_INDEX(tf.Score, '-', 1) AS UNSIGNED) < 
+            CAST(SUBSTRING_INDEX(tf.Score, '-', -1) AS UNSIGNED)
+            OR tf.Score IS NULL
+        )
+    )
+ORDER BY 
+    loc.Name ASC,
+    cm.ClubMemberID ASC;
+
+
+
+//---------------------------------------------------------------------//
+17. Get a report of all the personnel who were treasurer of the club at least once or is
+currently a treasurer of the club. The report should include the treasurer’s first name,
+last name, start date as a treasurer and last date as treasurer. If last date as treasurer is
+null means that the personnel is the current treasurer of the club. Results should be
+displayed sorted in ascending order by first name then by last name then by start date
+as a treasurer. 
+
+SELECT 
+    p.FirstName,
+    p.LastName,
+    MIN(pl.StartDate) AS "Start Date as Treasurer",
+    MAX(IFNULL(pl.EndDate, NULL)) AS "Last Date as Treasurer",
+    CASE 
+        WHEN MAX(IFNULL(pl.EndDate, '9999-12-31')) = '9999-12-31' THEN 'Current Treasurer'
+        ELSE 'Former Treasurer'
+    END AS "Treasurer Status"
+FROM 
+    Personnel p
+JOIN 
+    PersonnelLocations pl ON p.PersonnelID = pl.PersonnelID
+WHERE 
+    p.Role = 'Treasurer'  -- Assuming 'Treasurer' is a role in your Role enum
+    OR EXISTS (
+        SELECT 1 
+        FROM PersonnelRoles pr  -- Assuming a PersonnelRoles junction table if multiple roles possible
+        WHERE pr.PersonnelID = p.PersonnelID
+        AND pr.Role = 'Treasurer'
+    )
+GROUP BY 
+    p.PersonnelID, p.FirstName, p.LastName
+ORDER BY 
+    p.FirstName ASC,
+    p.LastName ASC,
+    MIN(pl.StartDate) ASC;
+
+
+//-------------------------------------------------------------//
+18. Get a report on all club members who were deactivated by the system because they
+became over 18 years old. Results should include the club member’ first name, last
+name, telephone number, email address, deactivation date, last location name and last
+role when deactivated. Results should be displayed sorted in ascending order by
+location name, then by role, then by first name then by last name. 
