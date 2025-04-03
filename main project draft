@@ -79,6 +79,20 @@ DELETE FROM ClubMembers WHERE LastName = 'Smith';
 
 //------------------------------------------//
 5. Create/Delete/Edit/Display a TeamFormation
+
+CREATE TABLE TeamFormations (
+    FormationID INT PRIMARY KEY AUTO_INCREMENT,
+    LocationID INT,
+    HeadCoachID INT,
+    StartTime DATETIME NOT NULL,
+    EndTime DATETIME NOT NULL,
+    SessionType ENUM('Training', 'Game') NOT NULL,
+    TeamName VARCHAR(100) NOT NULL,
+    Score VARCHAR(10),
+    FOREIGN KEY (LocationID) REFERENCES Locations(LocationID),
+    FOREIGN KEY (HeadCoachID) REFERENCES Personnel(PersonnelID)
+);
+
 -- Create
 INSERT INTO TeamFormations (LocationID, HeadCoachID, StartTime, EndTime, SessionType, TeamName, Score)
 VALUES (1, 1, '2025-03-25 10:00:00', '2025-03-25 12:00:00', 'Training', 'Junior A Team', NULL);
